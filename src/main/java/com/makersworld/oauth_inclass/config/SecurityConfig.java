@@ -42,6 +42,7 @@ public class SecurityConfig {
            .authorizeHttpRequests(auth -> auth
                // 인증 관련 API는 모두 허용
                .requestMatchers(
+                   "/.well-known/jwks.json",
                    "/api/v1/auth/**",
                    "/error",
                    "/swagger-ui/**", // Swagger UI 접근은 개발 환경에서만 허용
