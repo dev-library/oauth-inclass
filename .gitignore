@@ -35,3 +35,7 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Configuration Files ###
+# Exclude sensitive configuration files containing OAuth2 credentials
+**/application-config.properties

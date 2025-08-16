@@ -2,6 +2,7 @@ package com.makersworld.oauth_inclass.service;
 
 import com.makersworld.oauth_inclass.dto.GoogleTokenResponse;
 import com.makersworld.oauth_inclass.dto.GoogleUserInfoResponse;
+import com.makersworld.oauth_inclass.dto.UserInfoResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -10,9 +11,9 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.client.WebClient;
 
-@Service
+@Service("google")
 @RequiredArgsConstructor
-public class GoogleOAuth2Service {
+public class GoogleOAuth2Service implements OAuth2ProviderService {
 
     // application.properties에 설정된 값들을 주입받음
     @Value("${spring.security.oauth2.client.registration.google.client-id}")
@@ -26,7 +27,13 @@ public class GoogleOAuth2Service {
 
     private final WebClient webClient; // 비동기 HTTP 통신을 위한 클라이언트
 
-    public String getGoogleAuthorizationUrl() {
+    @Override
+    public String getId() {
+        return "google";
+    }
+
+    @Override
+    public String getAuthorizationUrl() {
         return "https://accounts.google.com/o/oauth2/v2/auth" +
                 "?client_id=" + clientId +
                 "&redirect_uri=" + redirectUri +
@@ -36,6 +43,7 @@ public class GoogleOAuth2Service {
     }
 
     // 1. 인증 코드로 Google에 액세스 토큰 요청
+    @Override
     public String getAccessToken(String code) {
         String tokenUri = "https://oauth2.googleapis.com/token";
 
@@ -64,19 +72,33 @@ public class GoogleOAuth2Service {
     }
 
     // 2. 액세스 토큰으로 Google에 사용자 정보 요청
-    public GoogleUserInfoResponse getUserInfo(String accessToken) {
+    @Override
+    public UserInfoResponse getUserInfo(String accessToken) {
         String userInfoUri = "https://www.googleapis.com/oauth2/v2/userinfo";
 
-        GoogleUserInfoResponse response = webClient.get()
+        GoogleUserInfoResponse googleResponse = webClient.get()
                 .uri(userInfoUri)
                 .headers(headers -> headers.setBearerAuth(accessToken)) // 헤더에 Bearer 토큰 추가
                 .retrieve()
                 .bodyToMono(GoogleUserInfoResponse.class)
                 .block();
 
-        if (response == null) {
+        if (googleResponse == null) {
             throw new RuntimeException("Failed to get user info from Google");
         }
-        return response;
+        
+        // GoogleUserInfoResponse를 범용 UserInfoResponse로 변환
+        return UserInfoResponse.builder()
+                .id(googleResponse.getId())
+                .email(googleResponse.getEmail())
+                .name(googleResponse.getName())
+                .picture(googleResponse.getPicture())
+                .build();
+    }
+
+    // 기존 메서드 호환성을 위해 유지 (deprecated)
+    @Deprecated
+    public String getGoogleAuthorizationUrl() {
+        return getAuthorizationUrl();
     }
 }
